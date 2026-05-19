@@ -1,0 +1,78 @@
+stages:
+  - init
+  - plan
+  - apply
+  - destroy
+
+variables:
+  AWS_DEFAULT_REGION: "us-east-1"
+  TF_LOG: "DEBUG"
+  TF_LOG_PATH: "debug.log"
+
+before_script:
+  - terraform --version
+  - aws --version
+  - aws sts get-caller-identity
+  - ls -la
+
+init:
+  stage: init
+  tags:
+    - terraform
+  script:
+    - echo "=====Running terraform init====="
+    - terraform init -upgrade
+    - cat .terraform.lock.hcl
+    - ls -la .terraform/
+  artifacts:
+    paths:
+      - .terraform/
+      - .terraform.lock.hcl
+      - debug.log
+
+plan:
+  stage: plan
+  tags:
+    - terraform
+  dependencies: 
+    - init
+  script:
+    - echo "=====Running terraform plan====="
+    - terraform validate
+    - terraform plan -out=tfplan 
+  artifacts:
+    paths:
+      - tfplan
+      - debug.log
+
+apply:
+  stage: apply
+  tags:
+    - terraform
+  dependencies:
+    - init
+    - plan
+  when: manual
+  script:
+    - terraform apply -auto-approve tfplan
+    - terraform show
+  artifacts:
+    paths:
+      - debug.log
+      - tfplan
+
+
+destroy:
+  stage: destroy
+  tags:
+    - terraform
+  dependencies:
+    - init
+  when: manual
+  script:
+    - terraform destroy -auto-approve
+  artifacts:
+    paths:
+      - debug.log
+  
+
